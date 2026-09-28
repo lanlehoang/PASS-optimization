@@ -1,17 +1,19 @@
-satellite:
-  height: 600 # km
-  n_satellites: 1000
-  d_max: 2000 # km
-  angle_limit: 75 # Degree, should be less than 90
-  n_neighbours: 8 # Maximum number of nearest neighbours to consider per satellite
-  # Random mu for different Poisson processes
-  mu:
-    lower: 35.0
-    upper: 50.0
-    start_scale: 20.0  # Make S0 generate more packets to simulate congestion. Should be >> 1.0
-  queue_limit: 12  # Maximum queue capacity per satellite
-
-physics:
-  r_earth: 6400 # km
-  c: 300000 # km/s
-  simulation_time: 0.2 # seconds
+# Table I default simulation parameters
+fc: 28e9          # Carrier frequency [Hz]
+L: 10             # Waveguide length / service width [m]
+W: 6              # Service width [m]
+h: 3              # Waveguide height [m]
+M: 20             # Number of candidate PASS points
+K: 5              # Number of sensing devices
+alpha: 2           # Free-space path-loss exponent
+alpha_wg: 0.0092   # Waveguide attenuation [m^-1]
+P: 0              # Device transmit power [dBm]
+sigma2: -90        # Effective receiver noise power [dBm]
+B: 1e6            # Transmission bandwidth [Hz]
+D: 1500           # Status-packet size [bits]
+tau: 1e-3          # Slot duration [s]
+lambda: 0.3        # Packet-arrival probability
+rho_sw: 0.1        # Normalized switching overhead
+# wk: 1/K         # Device priority (uniform)
+delta_max: 20      # Soft AoI threshold [slots]
+eta: 5             # Violation-penalty weight

@@ -7,7 +7,7 @@ name = "llm_aoi_optimization"
 version = "0.1.0"
 description = ""
 readme = "README.md"
-requires-python = "~=3.10.0"
+requires-python = ">=3.10"
 authors = [
     { name = "Le Hoang Lan", email = "lelan210420@gmail.com" }
 ]

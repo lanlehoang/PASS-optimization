@@ -3,7 +3,7 @@ from src.agents.dqn import DqnAgent
 from src.utils.get_config import get_system_config
 from src.utils.generators import RANDOM_SEED
 from src.utils.others import state_to_arrays
-from src.env.env import SatelliteEnv
+from src.env.env import AntennaEnv
 from .prompts import GetPrompts
 from src.utils.logger import get_logger
 
@@ -44,7 +44,7 @@ class SatelliteRouting:
 
         # Initialize environment and run simulations
         np.random.seed(RANDOM_SEED)
-        env = SatelliteEnv()
+        env = AntennaEnv()
 
         aois = []
         dropped_ratios = []

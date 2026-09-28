@@ -7,3 +7,4 @@ litellm # Lightweight LLM library
 joblib # Running tasks in parallel
 matplotlib # Plotting library
 seaborn # Statistical data visualization
+ipykernel

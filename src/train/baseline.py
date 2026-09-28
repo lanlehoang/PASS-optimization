@@ -1,4 +1,4 @@
-from src.env.env import SatelliteEnv
+from src.env.env import AntennaEnv
 from src.utils.logger import get_logger
 from src.utils.get_config import get_agent_config, get_system_config
 from src.utils.generators import RANDOM_SEED
@@ -28,7 +28,7 @@ SUFFIX = f"dmax_{DMAX}"  # To distinguish different system configurations
 def main():
     logger.info(f"Initializing the environment with random seed {RANDOM_SEED}")
     np.random.seed(RANDOM_SEED)
-    env = SatelliteEnv()
+    env = AntennaEnv()
 
     logger.info("Initializing the agent")
     agent = DqnAgent()

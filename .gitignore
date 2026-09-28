@@ -16,3 +16,6 @@ aoi_venv/
 
 # Miscellaneous testing
 test.*
+
+# Opencode tmp workdir
+*tmp/

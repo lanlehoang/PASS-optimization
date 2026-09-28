@@ -6,7 +6,7 @@ No training involved
 import pandas as pd
 import numpy as np
 
-from .env.env import SatelliteEnv
+from .env.env import AntennaEnv
 from .utils.generators import RANDOM_SEED
 from .agents.dqn_heuristic import DqnHeuristicAgent
 from .agents.dqn import DqnAgent
@@ -36,7 +36,7 @@ class MethodEvaluator:
     def evaluate_greedy_nearest(self):
         logger.info("Evaluating Greedy Nearest Method")
         np.random.seed(RANDOM_SEED)
-        env = SatelliteEnv()
+        env = AntennaEnv()
         aois = []
         dropped_ratios = []
 
@@ -62,7 +62,7 @@ class MethodEvaluator:
     def evaluate_greedy_expected_time(self):
         logger.info("Evaluating Greedy Expected Time Method")
         np.random.seed(RANDOM_SEED)
-        env = SatelliteEnv()
+        env = AntennaEnv()
         aois = []
         dropped_ratios = []
 
@@ -88,7 +88,7 @@ class MethodEvaluator:
     def evaluate_dqn(self):
         logger.info("Evaluating DQN Heuristic Method")
         np.random.seed(RANDOM_SEED)
-        env = SatelliteEnv()
+        env = AntennaEnv()
 
         # Load DQN agent
         agent = DqnAgent()
@@ -119,7 +119,7 @@ class MethodEvaluator:
     def evaluate_dqn_heuristic(self):
         logger.info("Evaluating DQN Heuristic Method")
         np.random.seed(RANDOM_SEED)
-        env = SatelliteEnv()
+        env = AntennaEnv()
 
         # Load DQN Heuristic agent
         agent = DqnHeuristicAgent(str(DQN_MODEL_PATH), str(HEURISTIC_CONFIG_PATH))
