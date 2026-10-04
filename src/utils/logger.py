@@ -5,7 +5,7 @@ from pathlib import Path
 # Optional: create logs directory
 LOG_DIR = Path(__file__).parent.parent.parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)
-LOG_FILE = LOG_DIR / "llm_aoi_optimization.log"
+LOG_FILE = LOG_DIR / "pass_aoi.log"
 
 LOGGING_CONFIG = {
     "version": 1,

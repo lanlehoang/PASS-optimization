@@ -17,33 +17,6 @@ ENVIRONMENT_SHAPE = EnvironmentState.STATE_DIM
 logger = get_logger(__name__)
 
 
-class DeepSetNetwork(nn.Module):
-    """
-    Implement the \phi function in DeepSet for processing satellite and neighbour information.
-    Input to the DeepSet:
-    - Each neighbour is represented as a vector of shape (NEIGHBOUR_SHAPE,)
-    Output:
-    - Embedding vector of shape (output_dim,)
-    """
-
-    def __init__(self, input_dims, fc1_dims, fc2_dims, output_dim, dropout):
-        super().__init__()
-        self.fc1 = nn.Linear(input_dims, fc1_dims)
-        self.ln1 = nn.LayerNorm(fc1_dims)
-        self.dropout1 = nn.Dropout(dropout)
-        self.fc2 = nn.Linear(fc1_dims, fc2_dims)
-        self.ln2 = nn.LayerNorm(fc2_dims)
-        self.dropout2 = nn.Dropout(dropout)
-        self.fc3 = nn.Linear(fc2_dims, output_dim)
-
-    def forward(self, x):
-        x = f.leaky_relu(self.ln1(self.fc1(x)))
-        x = self.dropout1(x)
-        x = f.leaky_relu(self.ln2(self.fc2(x)))
-        x = self.dropout2(x)
-        x = self.fc3(x)
-        return x
-
 
 class QNetwork(nn.Module):
     def __init__(

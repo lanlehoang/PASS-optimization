@@ -19,3 +19,6 @@ test.*
 
 # Opencode tmp workdir
 *tmp/
+
+# Opencode files
+.tmp/opencode.txt
