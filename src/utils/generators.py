@@ -1,73 +1,40 @@
+"""
+Centralized random number generators for the project.
+
+All stochastic operations should import from this file to ensure
+reproducibility and consistent seeding across the codebase.
+"""
+
+import random
+
 import numpy as np
-from src.utils.geometry import convert_polar_to_cartesian
 
 RANDOM_SEED = 42
 
 
-def generate_satellite_positions(num_satellites, radius):
-    """
-    Generate random positions over polar coordinates for a given number of satellites.
-    Convert polar coordinates to Cartesian coordinates.
-    Ouput shape: (num_satellites, 3)
-    """
-    theta = np.random.uniform(0, 2 * np.pi, num_satellites)
-    z = np.random.uniform(0, 1, num_satellites)  # cos(phi)
-    phi = np.arccos(z)
-    return convert_polar_to_cartesian(theta, phi, radius)
+def set_global_seed(seed: int = RANDOM_SEED) -> None:
+    """Set the random seed for both Python's random and NumPy."""
+    random.seed(seed)
+    np.random.seed(seed)
 
 
-def generate_satellite_processing_rates(num_satellites, lower, upper):
-    """
-    Generate random processing rates (mu in Poisson distribution) for a given number of satellites.
-    Output shape: (num_satellites,)
-    """
-    return np.random.uniform(lower, upper, num_satellites)
+def generate_uniform(low: float = 0.0, high: float = 1.0, size=None):
+    """Generate random floats in the interval [low, high)."""
+    return np.random.uniform(low, high, size)
 
 
-def generate_processing_time(mu):
-    """
-    Generate processing times for a given mean (mu) using an exponential distribution.
-    """
-    return np.random.exponential(1 / mu)
+def generate_random():
+    """Return a single random float in [0.0, 1.0)."""
+    return np.random.random()
 
 
-def choose_start_end(satellite_positions):
-    """
-    Choose start and end satellites for a transfer operation.
-    Ensure that the angle between the two satellites is greater than 135 degrees.
-    Return (start_index, end_index).
-    """
-    n_satellites = satellite_positions.shape[0]
-    for i in range(n_satellites):
-        for j in range(i + 1, satellite_positions.shape[0]):
-            angle = np.arccos(
-                np.dot(satellite_positions[i], satellite_positions[j])
-                / (np.linalg.norm(satellite_positions[i]) * np.linalg.norm(satellite_positions[j]))
-            )
-            if angle > 3 * np.pi / 4:  # 135 degrees in radians
-                return i, j
-    err_msg = (
-        "No valid start and end satellites found with angle > 135 degrees. "
-        "Consider adjusting satellite positions or the number of satellites."
-    )
-    raise ValueError(err_msg)
+def generate_bernoulli(prob: float, size=None):
+    """Generate Bernoulli trials with success probability *prob*."""
+    if size is None:
+        return 1 if np.random.random() < prob else 0
+    return (np.random.random(size) < prob).astype(int)
 
 
-def generate_all_packets(mu, simulation_time):
-    """
-    Generate all packets at the start satellite with processing times based on the given mu.
-    """
-    time = generate_processing_time(mu)
-    packet_times = []
-    while time < simulation_time:
-        processing_time = generate_processing_time(mu)
-        packet_times.append(time)
-        time += processing_time
-
-    if not packet_times:
-        err_msg = (
-            f"No packets generated within the simulation time {simulation_time}. "
-            f"Consider increasing mu ({mu}) or simulation_time ({simulation_time})."
-        )
-        raise ValueError(err_msg)
-    return list(enumerate(packet_times))
+def generate_choice(a, size=None, replace=True, p=None):
+    """Randomly sample from *a* (NumPy-style choice)."""
+    return np.random.choice(a, size=size, replace=replace, p=p)

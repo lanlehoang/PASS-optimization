@@ -6,6 +6,7 @@ from src.utils.get_config import get_agent_config, get_system_config
 from src.utils.logger import get_logger
 from src.env.state_models import NeighbourState, EnvironmentState
 import pandas as pd
+from src.utils.generators import generate_choice, generate_random
 
 agent_config = get_agent_config()
 system_config = get_system_config()
@@ -30,13 +31,6 @@ class QNetwork(nn.Module):
         lr,
     ):
         super().__init__()
-        self.deep_set = DeepSetNetwork(
-            input_dims=ds_input_dims,
-            fc1_dims=ds_fc1_dims,
-            fc2_dims=ds_fc2_dims,
-            output_dim=embed_dims,
-            dropout=dropout,
-        )
         # Residual: include neighbour raw state (4) + its embedding (E)
         self.fc = nn.Sequential(
             nn.Linear(NEIGHBOUR_SHAPE + 2 * embed_dims, final_fc_dims),
@@ -156,7 +150,7 @@ class ReplayBuffer(object):
 
     def sample_buffer(self, batch_size):
         max_mem = min(self.mem_counter, self.mem_size)
-        batch = np.random.choice(max_mem, batch_size, replace=False)
+        batch = generate_choice(max_mem, batch_size, replace=False)
 
         states = self.state_memory[batch]
         new_states = self.new_state_memory[batch]
@@ -230,7 +224,7 @@ class DqnAgent:
         return q_values
 
     def choose_action(self, state):
-        rand = np.random.random()
+        rand = generate_random()
         if not isinstance(state, torch.Tensor):
             state_t = torch.tensor(state, dtype=torch.float32, device=DEVICE)
         else:
@@ -239,7 +233,7 @@ class DqnAgent:
         if rand < self.epsilon:
             neighbour_states = state_t.cpu().numpy().reshape(-1, NEIGHBOUR_SHAPE)
             valid_actions = np.where(np.any(neighbour_states != 0, axis=1))[0]
-            action = int(np.random.choice(valid_actions))
+            action = int(generate_choice(valid_actions))
         else:
             q_values = self._predict_q_values(state_t)
             action = int(torch.argmax(q_values).item())
@@ -250,7 +244,7 @@ class DqnAgent:
         Choose action with Q-value offset computed by LLMs.
         q_offset: float value to add to Q-values before selecting action.
         """
-        rand = np.random.random()
+        rand = generate_random()
         if not isinstance(state, torch.Tensor):
             state_t = torch.tensor(state, dtype=torch.float32, device=DEVICE)
         else:
@@ -259,7 +253,7 @@ class DqnAgent:
         if rand < self.epsilon:
             neighbour_states = state_t.cpu().numpy().reshape(-1, NEIGHBOUR_SHAPE)
             valid_actions = np.where(np.any(neighbour_states != 0, axis=1))[0]
-            action = int(np.random.choice(valid_actions))
+            action = int(generate_choice(valid_actions))
         else:
             q_values = self._predict_q_values(state_t).cpu().numpy()
             q_values += q_offset

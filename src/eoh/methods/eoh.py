@@ -7,6 +7,8 @@ from .eoh_interface_ec import InterfaceEC
 from .logger import EvolLogger
 
 
+from src.utils.generators import generate_random, set_global_seed
+
 class EOH:
     def __init__(self, params, problem, **kwargs):
         self.prob = problem
@@ -39,7 +41,7 @@ class EOH:
         self.use_numba = params.eva_numba_decorator
 
         print("- EoH parameters loaded -")
-        random.seed(2024)
+        set_global_seed(2024)
 
     def add2pop(self, population, offspring):
         """Add new individuals to population (with duplication check)"""
@@ -108,7 +110,7 @@ class EOH:
                 print(f" OP: {op}, [{i + 1} / {n_op}] ", end="|")
 
                 op_w = self.operator_weights[i]
-                if np.random.rand() < op_w:
+                if generate_random() < op_w:
                     parents, offsprings = interface_ec.get_algorithm(population, op)
                     # Log each offspring
                     for idx, off in enumerate(offsprings):

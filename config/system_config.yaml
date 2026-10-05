@@ -17,3 +17,4 @@ rho_sw: 0.1        # Normalized switching overhead
 # wk: 1/K         # Device priority (uniform)
 delta_max: 20      # Soft AoI threshold [slots]
 eta: 5             # Violation-penalty weight
+T_sim: 1000       # Simulation horizon

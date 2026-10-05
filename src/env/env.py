@@ -1,6 +1,8 @@
 import numpy as np
-from src.utils.generators import *
-from src.utils.geometry import *
+from src.utils.generators import (
+    generate_bernoulli,
+    generate_uniform,
+)
 from src.utils.get_config import get_system_config, get_agent_config
 from src.env.env_classes import *
 from src.utils.logger import get_logger
@@ -23,14 +25,14 @@ class AntennaEnv:
         l_wg = system_config["L"]
         h_wg = system_config["h"]
         switch_cost = system_config["rho_sw"]
-        self.waveguide = Waveguide(self.n_pinches, l_wg, h_wg, switch_cost) 
+        self.waveguide = Waveguide(self.n_pinches, l_wg, h_wg, switch_cost)
 
         # Init devices
         self.n_devices = system_config["K"]
         self.generation_prob = system_config["lambda"]
         service_width = system_config["W"]/2
-        x_devices = np.random.uniform(0, l_wg, self.n_devices)
-        y_devices = np.random.uniform(-service_width, service_width, self.n_devices)
+        x_devices = generate_uniform(0, l_wg, self.n_devices)
+        y_devices = generate_uniform(-service_width, service_width, self.n_devices)
         z_devices = np.zeros(self.n_devices)
         self.device_locations = np.stack([x_devices, y_devices, z_devices], axis=0)
         
@@ -41,6 +43,10 @@ class AntennaEnv:
 
         # Total cost incurred
         self.total_cost = 0
+
+        # Set time
+        self.t_slot = 0
+        self.t_sim = system_config["T_sim"]
 
     def reset(self):
         # Reset pinch configuration, AoIs, buffers, and total cost only
@@ -78,14 +84,16 @@ class AntennaEnv:
         6. Update states: AoI, buffer, packet age, PASS config
         7. Calculate cost and reward
         """
+        # Start the new time slot
+        self.t_slot += 1
+
         # Store previous states for updates
         prev_bs_aois = self.bs_aois.copy()
         prev_device_buffers = self.device_buffers.copy()
         prev_buffered_packet_ages = self.buffered_packet_ages.copy()
         
         # Packet generation step: Ak(t) ~ Bernoulli(λ)
-        rand_probs = np.random.uniform(0, 1, self.n_devices)
-        new_arrivals = (rand_probs < self.generation_prob).astype(int)
+        new_arrivals = generate_bernoulli(self.generation_prob, self.n_devices)
 
         # Update buffered packet age (δk(t)) - reset to 0 for new arrivals
         self.buffered_packet_ages = np.where(new_arrivals == 1, 0, self.buffered_packet_ages)
@@ -141,7 +149,7 @@ class AntennaEnv:
             psuc = np.exp(-snr_threshold / snr)
             
             # Determine if transmission succeeds
-            Yk = 1 if np.random.uniform(0, 1) < psuc else 0
+            Yk = generate_bernoulli(psuc)
         
         # Update BS AoI: ∆k(t+1) = ∆k(t) + 1 - Yk(t)[∆k(t) - δk(t)]
         for i in range(self.n_devices):
@@ -189,9 +197,11 @@ class AntennaEnv:
         # Get next state
         next_state = self._get_state()
         
-        # Done flag (can be set based on episode length or other criteria)
-        done = False        
-        return next_state, reward, done, {}
+        # Done flag
+        done = self.t_sim == self.t_slot
+        info = {"total_cost": self.total_cost}    
+        
+        return next_state, reward, done, info
     
     def _get_state(self):
         """
