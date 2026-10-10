@@ -6,7 +6,6 @@ from src.utils.generators import (
 from src.utils.get_config import get_system_config, get_agent_config
 from src.env.env_classes import *
 from src.utils.logger import get_logger
-from src.env.state_models import NeighbourState, EnvironmentState
 from src.env.env_classes import Waveguide
 
 logger = get_logger(__name__)
@@ -50,7 +49,7 @@ class AntennaEnv:
 
     def reset(self):
         # Reset pinch configuration, AoIs, buffers, and total cost only
-        self.waveguide.configure_pinch(0)
+        self.waveguide.configure_pinch(-1)
         self.buffered_packet_ages = np.zeros(self.n_devices)
         self.device_buffers = np.zeros(self.n_devices)
         self.bs_aois = np.zeros(self.n_devices)

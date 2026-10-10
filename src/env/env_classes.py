@@ -15,7 +15,7 @@ class Waveguide:
         y_pinches = np.zeros(n_pinches)
         z_pinches = np.ones(n_pinches)*h_wg
         self.pinches = np.stack([x_pinches, y_pinches, z_pinches], axis=0)
-        self.cur_pinch = 0  # Init at 0 always
+        self.cur_pinch = -1  # -1 means unconfigured
         self.antenna = np.array([0, 0, h_wg])
         self.switch_cost = switch_cost
 
