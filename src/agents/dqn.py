@@ -4,7 +4,7 @@ import torch.nn.functional as f
 import numpy as np
 from src.utils.get_config import get_agent_config, get_system_config
 from src.utils.logger import get_logger
-from src.env.state_models import NeighbourState, EnvironmentState
+from src.env.state_models import EnvironmentState
 import pandas as pd
 from src.utils.generators import generate_choice, generate_random
 
@@ -12,63 +12,62 @@ agent_config = get_agent_config()
 system_config = get_system_config()
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-NEIGHBOUR_SHAPE = NeighbourState.STATE_DIM
 ENVIRONMENT_SHAPE = EnvironmentState.STATE_DIM
+N_DEVICES, N_PINCHES = system_config["K"], system_config["M"]
+N_ACTIONS = N_DEVICES * N_PINCHES
 
 logger = get_logger(__name__)
 
+
+def get_action_range(k):
+    return k * N_PINCHES, (k + 1) * N_PINCHES
 
 
 class QNetwork(nn.Module):
     def __init__(
         self,
-        ds_input_dims,
-        ds_fc1_dims,
-        ds_fc2_dims,
-        embed_dims,
-        final_fc_dims,
+        fc1_dims,
+        fc2_dims,
+        fc3_dims,
         dropout,
         lr,
     ):
         super().__init__()
-        # Residual: include neighbour raw state (4) + its embedding (E)
+        # Use a simple 3 hidden layer network
         self.fc = nn.Sequential(
-            nn.Linear(NEIGHBOUR_SHAPE + 2 * embed_dims, final_fc_dims),
-            nn.LayerNorm(final_fc_dims),
+            nn.Linear(ENVIRONMENT_SHAPE, fc1_dims),
+            nn.LayerNorm(fc1_dims),
             nn.Dropout(dropout),
             nn.LeakyReLU(),
-            nn.Linear(final_fc_dims, 1),
+            nn.Linear(fc1_dims, fc2_dims),
+            nn.LayerNorm(fc2_dims),
+            nn.Dropout(dropout),
+            nn.LeakyReLU(),
+            nn.Linear(fc2_dims, fc3_dims),
+            nn.LayerNorm(fc3_dims),
+            nn.Dropout(dropout),
+            nn.LeakyReLU(),
+            nn.Linear(fc3_dims, N_ACTIONS),
         )
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         self.loss_fn = nn.SmoothL1Loss()
 
     def forward(self, x):
         """
-        x: (B, state_dim+1) with appended action index
-        Returns: (B,1) Q-value for selected action
+        x: (B, state_dim)
+        Returns: (B, N_ACTIONS) Q-values
         """
-        actions = x[:, -1].long()
-        B = x.size(0)
-        neighbours = x[:, :-1].reshape(B, -1, NEIGHBOUR_SHAPE)
-        N = neighbours.size(1)
+        # Compute raw Q-values
+        x = self.fc(x)
 
-        # DeepSet embeddings
-        embeds = self.deep_set(neighbours.reshape(-1, neighbours.size(-1)))  # (B*N,E)
-        embeds = embeds.reshape(B, N, -1)  # (B,N,E)
+        # Get the invalid actions (devices with zero buffer)
+        device_buffers = x[:, N_DEVICES: 2 * N_DEVICES]
+        empty_buffers = device_buffers == 0  # (B, N_DEVICES)
 
-        # Mask invalid neighbours
-        mask = torch.any(neighbours != 0, dim=2)  # (B,N)
-        masked_embeds = embeds * mask.unsqueeze(2).float()
-        valid_counts = mask.sum(dim=1, keepdim=True).float()
-        pooled_embeds = masked_embeds.sum(dim=1) / torch.clamp(valid_counts, min=1.0)
+        # For each device with zero buffer, ban all of its m corresponding actions
 
-        # Select chosen neighbour’s embed + raw state
-        chosen_embeds = embeds[torch.arange(B), actions]  # (B,E)
-        chosen_states = neighbours[torch.arange(B), actions]  # (B, NEIGHBOUR_SHAPE)
 
-        # Fusion: [chosen_embeds | pooled_embeds | chosen_states]
-        fc_input = torch.cat((chosen_embeds, pooled_embeds, chosen_states), dim=1)
-        return self.fc(fc_input)
+        return x
 
     def predict(self, states):
         """
