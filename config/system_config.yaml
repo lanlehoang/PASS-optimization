@@ -16,5 +16,5 @@ lambda: 0.3        # Packet-arrival probability
 rho_sw: 0.1        # Normalized switching overhead
 # wk: 1/K         # Device priority (uniform)
 delta_max: 20      # Soft AoI threshold [slots]
-eta: 5             # Violation-penalty weight
+eta: 0.5            # Violation penalty, as a fraction of the weighted-AoI cost (0.1-0.5)
 T_sim: 1000       # Simulation horizon

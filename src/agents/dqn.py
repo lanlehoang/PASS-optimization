@@ -14,7 +14,8 @@ system_config = get_system_config()
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ENVIRONMENT_SHAPE = EnvironmentState.STATE_DIM
 N_DEVICES, N_PINCHES = system_config["K"], system_config["M"]
-N_ACTIONS = N_DEVICES * N_PINCHES
+N_ACTIONS = N_DEVICES * N_PINCHES + 1  # +1 for the IDLE action (only valid when all buffers are empty)
+IDLE = N_ACTIONS - 1  # = K * M
 
 logger = get_logger(__name__)
 
@@ -50,9 +51,12 @@ class QNetwork(nn.Module):
 
         State layout: [AoI (K), buffer occupancy b (K), buffered age (K), pinch block].
         Action index = k * N_PINCHES + m, so device k owns [k*M, (k+1)*M).
+        The last action (K*M) is IDLE, valid only when every buffer is empty.
         """
-        empty = x[:, N_DEVICES: 2 * N_DEVICES] == 0
-        return empty.repeat_interleave(N_PINCHES, dim=1)
+        empty = x[:, N_DEVICES: 2 * N_DEVICES] == 0              # (B, K)
+        dev = empty.repeat_interleave(N_PINCHES, dim=1)          # (B, K*M)
+        idle = ~empty.all(dim=1, keepdim=True)                    # IDLE invalid unless all empty
+        return torch.cat([dev, idle], dim=1)                      # (B, N_ACTIONS)
 
     def predict(self, states):
         """Masked Q-values; invalid actions are -inf."""
@@ -139,9 +143,9 @@ class DqnAgent:
 
         # NOTE: adjust these config keys to match your YAML
         net_kwargs = dict(
-            fc1_dims=agent_config["dqn"]["fc1_dims"],
-            fc2_dims=agent_config["dqn"]["fc2_dims"],
-            fc3_dims=agent_config["dqn"]["fc3_dims"],
+            fc1_dims=agent_config["dqn"]["deepset"]["fc1_dims"],
+            fc2_dims=agent_config["dqn"]["deepset"]["fc2_dims"],
+            fc3_dims=agent_config["dqn"]["final_fc_dims"],
             dropout=agent_config["dqn"]["dropout"],
             lr=self.lr,
         )
@@ -198,6 +202,7 @@ class DqnAgent:
         Choose action with a Q-value offset computed by the LLM heuristic.
         q_offset: array of shape (N_ACTIONS,) added to Q-values before argmax.
         Masked (-inf) entries stay -inf after the addition.
+        The caller must provide a 0 offset for the IDLE slot.
         """
         rand = generate_random()
         state_t = self._to_tensor(state)
@@ -227,8 +232,10 @@ class DqnAgent:
                 }
             )
 
-    def learn(self):
-        if self.memory.mem_counter >= self.batch_size:
+    def learn(self, steps=1):
+        if self.memory.mem_counter < self.batch_size:
+            return
+        for _ in range(steps):
             # 1. Sample batch
             states, actions_idx, rewards, new_states, not_done = self.memory.sample_buffer(self.batch_size)
 
@@ -249,10 +256,10 @@ class DqnAgent:
             # 4. Train eval net
             self.q_eval.fit(states, actions_idx, q_target)
 
-            # 5. Target network sync
-            self.learn_step_counter = (self.learn_step_counter + 1) % self.target_update_interval
-            if self.learn_step_counter == 0:
-                self.update_target_network()
+        # 5. Target network sync
+        self.learn_step_counter = (self.learn_step_counter + 1) % self.target_update_interval
+        if self.learn_step_counter == 0:
+            self.update_target_network()
 
     def save_model(self, path):
         torch.save(self.q_eval.state_dict(), path)

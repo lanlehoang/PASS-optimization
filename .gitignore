@@ -22,3 +22,6 @@ test.*
 
 # Opencode files
 .tmp/opencode.txt
+
+# Logs
+logs/

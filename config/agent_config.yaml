@@ -21,7 +21,7 @@ train:
   train_interval: 10  # Train every n episodes
   lr: 0.0005
   batch_size: 64
-  gamma: 0.995
+  gamma: 0.91
   epsilon:
     init: 1.0
     min: 0.001
