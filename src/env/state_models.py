@@ -15,4 +15,4 @@ class EnvironmentState(BaseModel):
     Concatenation of exactly N_DEVICES NeighbourState instances.
     """
 
-    STATE_DIM: ClassVar[int] = N_DEVICES * 3 + 1  # 3 features per device + 1 for inherited PASS
+    STATE_DIM: ClassVar[int] = N_DEVICES * 3 + get_system_config()["M"]  # 3 features per device + M one-hot for inherited PASS

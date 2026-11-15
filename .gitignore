@@ -25,3 +25,6 @@ test.*
 
 # Logs
 logs/
+
+# Model weights
+models/*.pth

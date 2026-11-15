@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import pandas as pd
 
 from src.utils.get_config import get_agent_config, get_system_config
 from src.utils.logger import get_logger
@@ -123,7 +122,7 @@ class ReplayBuffer(object):
 
 
 class DqnAgent:
-    def __init__(self, input_dims=ENVIRONMENT_SHAPE, mem_size=2048, target_update_interval=10):
+    def __init__(self, input_dims=ENVIRONMENT_SHAPE, mem_size=50000, target_update_interval=10):
         logger.info(f"Initializing DQN Agent with device: {DEVICE}")
         self.action_space = np.arange(N_ACTIONS)
         self.gamma = agent_config["train"]["gamma"]
@@ -132,13 +131,6 @@ class DqnAgent:
         self.epsilon_min = agent_config["train"]["epsilon"]["min"]
         self.batch_size = agent_config["train"]["batch_size"]
         self.memory = ReplayBuffer(mem_size, input_dims)
-        # Data samples for LLM prompt
-        self.data_samples = {
-            "dropped": [],
-            "arrived": [],
-            None: [],
-        }
-        self.max_examples_per_type = 100
         self.lr = agent_config["train"]["lr"]
 
         # NOTE: adjust these config keys to match your YAML
@@ -216,22 +208,6 @@ class DqnAgent:
             action = int(np.argmax(q_values))
         return action
 
-    def store_sample(self, state, action, reward, info):
-        """
-        Store events (dropped, arrived, None) as examples for the LLM prompt:
-        state, predicted Q-values, action taken, reward received.
-        """
-        if len(self.data_samples[info]) < self.max_examples_per_type:
-            q_values = self._predict_q_values(state).cpu().numpy().tolist()
-            self.data_samples[info].append(
-                {
-                    "state": state,
-                    "q_values": q_values,
-                    "action": action,
-                    "reward": reward,
-                }
-            )
-
     def learn(self, steps=1):
         if self.memory.mem_counter < self.batch_size:
             return
@@ -271,26 +247,3 @@ class DqnAgent:
         self.q_eval.eval()
         self.q_target.eval()
         self.epsilon = self.epsilon_min  # evaluation: minimal exploration
-
-    def write_samples(self, filepath):
-        """Write data samples to a CSV file for easier analysis."""
-        states, q_values, actions, rewards, info_types = [], [], [], [], []
-
-        for info_type, samples in self.data_samples.items():
-            for sample in samples:
-                states.append(sample["state"])
-                q_values.append(sample["q_values"])
-                actions.append(sample["action"])
-                rewards.append(sample["reward"])
-                info_types.append(info_type)
-
-        df = pd.DataFrame(
-            {
-                "info_type": info_types,
-                "state": states,
-                "q_values": q_values,
-                "action": actions,
-                "reward": rewards,
-            }
-        )
-        df.to_csv(filepath, index=False)

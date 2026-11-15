@@ -66,9 +66,11 @@ def main():
             # 3. Remember the transition
             agent.remember(state, action, reward, next_state, done)
 
-            # 4. Learn every episode once the replay buffer is warm (and not frozen)
+            # 4. Learn every train_freq steps once the replay buffer is warm (and not frozen)
+            train_freq = agent_config["train"]["train_freq"]
             if i < N_EPOCHS - N_EPOCHS_FREEZE and agent.memory.mem_counter >= BATCH_SIZE:
-                agent.learn(steps=LEARN_STEPS)
+                if steps % train_freq == 0:
+                    agent.learn(steps=LEARN_STEPS)
 
             # 5. Decay epsilon every decay_interval steps
             steps = (steps + 1) % decay_interval
@@ -116,10 +118,7 @@ def main():
     df.to_csv(DATA_PATH, index=False)
     logger.info(f"Results saved to {DATA_PATH}")
 
-    # Save data samples for LLM prompt
-    SAMPLE_PATH = f"{DATA_DIR}/dqn_data_samples_{SUFFIX}.csv"
-    agent.write_samples(SAMPLE_PATH)
-    logger.info(f"Data samples saved to {SAMPLE_PATH}")
+    logger.info("Training complete.")
 
 
 if __name__ == "__main__":

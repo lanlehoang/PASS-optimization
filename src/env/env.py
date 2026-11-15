@@ -203,28 +203,23 @@ class AntennaEnv:
                 # No packet in buffer: age stays 0
                 self.buffered_packet_ages[i] = 0
         
-        # Calculate cost based on weighted AoI and violation penalty
+        # Calculate cost per the paper:
+        # cost = sum_k wk * Delta_k(t) + eta * sum_k 1{Delta_k(t) > Delta_max}
         wk = 1.0 / self.n_devices  # Uniform weight
-        eta = system_config["eta"]
-        
+        eta = float(system_config["eta"])
+        delta_max = float(system_config["delta_max"])
+
         # Weighted AoI cost
         cost_aoi = wk * np.sum(self.bs_aois)
 
-        # Soft-margin violation penalty, normalized to a FRACTION of the AoI cost
-        # (eta ~ 0.1..0.5). It measures how far each device's AoI exceeds the *mean*
-        # (i.e. how far it lags the pack), so it actively discourages the
-        # unbalanced/starvation failure mode. Continuous hinge (NOT a hard clip)
-        # and, because sum(excess) <= sum(AoI), bounded by eta * cost_aoi.
-        mean_aoi = float(np.mean(self.bs_aois))
-        excess = np.maximum(self.bs_aois - mean_aoi, 0.0)
-        aoi_total = float(np.sum(self.bs_aois))
-        excess_fraction = float(np.sum(excess)) / aoi_total if aoi_total > 0 else 0.0
-        cost_violation = eta * cost_aoi * excess_fraction
+        # Violation penalty: hard threshold on per-device AoI (Eq. 20 in paper)
+        violations = int(np.sum(self.bs_aois > delta_max))
+        cost_violation = eta * violations
 
         # Total cost
         cost = cost_aoi + cost_violation
         self.total_cost += cost
-        
+
         # Reward = -cost
         reward = -cost
         
@@ -247,12 +242,16 @@ class AntennaEnv:
     def _get_state(self):
         """
         Get the current state for the agent.
-        State s(t) = {∆k(t), bk(t), δk(t), m-(t)}
+        State s(t) = {∆k(t), bk(t), δk(t), m-(t)}  where m-(t) is one-hot encoded.
         """
+        # One-hot encode the inherited PASS configuration
+        pinch_onehot = np.zeros(self.n_pinches)
+        if 0 <= self.waveguide.cur_pinch < self.n_pinches:
+            pinch_onehot[self.waveguide.cur_pinch] = 1.0
         state = np.concatenate([
-            self.bs_aois,                    # ∆k(t) - BS AoI for each device
-            self.device_buffers,              # bk(t) - buffer state for each device
-            self.buffered_packet_ages,        # δk(t) - buffered packet age for each device
-            [self.waveguide.cur_pinch]        # m-(t) - inherited PASS configuration
+            self.bs_aois,              # ∆k(t) - BS AoI for each device
+            self.device_buffers,       # bk(t) - buffer state for each device
+            self.buffered_packet_ages,  # δk(t) - buffered packet age for each device
+            pinch_onehot               # m-(t) - inherited PASS configuration (one-hot)
         ])
         return state
